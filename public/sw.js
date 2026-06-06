@@ -1,60 +1,81 @@
 // WNBA Dashboard PWA Service Worker
-const CACHE_NAME = 'wnba-dashboard-v1';
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-];
+//
+// Strategy (chosen for a "living dashboard" where freshness matters most):
+//  - API requests:  network-only — never cache, so game data is never stale.
+//  - Navigation:    network-first — always load the latest deployed app when
+//                   online; fall back to the cached shell only when offline.
+//  - Other assets:  network-first with cache fallback. Vite content-hashes
+//                   asset filenames, so a new deploy fetches new files.
+//
+// Bumping CACHE_VERSION purges every older cache on activate. This is what
+// rescues browsers that were stuck on a previously cached app version.
+const CACHE_VERSION = 'v3';
+const CACHE_NAME = `wnba-dashboard-${CACHE_VERSION}`;
 
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(urlsToCache).catch(() => {
-        // Partial cache OK — some files may not exist yet
-      });
-    })
-  );
+self.addEventListener('install', () => {
+  // Activate this new worker immediately instead of waiting for old tabs.
   self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
+    (async () => {
+      // Delete ALL old caches (including the broken cache-first v1).
+      const names = await caches.keys();
+      await Promise.all(
+        names.filter(n => n !== CACHE_NAME).map(n => caches.delete(n))
       );
-    })
+      // Take control of open pages right away.
+      await self.clients.claim();
+    })()
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', event => {
-  // Network-first for API calls, cache-first for assets
-  if (event.request.url.includes('rapidapi')) {
-    // Network first for API
-    event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          if (response.ok) {
-            const cache = caches.open(CACHE_NAME);
-            cache.then(c => c.put(event.request, response.clone()));
-          }
-          return response;
-        })
-        .catch(() => {
-          return caches.match(event.request);
-        })
-    );
-  } else {
-    // Cache first for everything else
-    event.respondWith(
-      caches.match(event.request).then(response => {
-        return response || fetch(event.request);
-      })
-    );
+  const { request } = event;
+
+  // Only handle GET requests.
+  if (request.method !== 'GET') return;
+
+  // 1) API data — always go to the network, never serve cached game data.
+  if (request.url.includes('rapidapi')) {
+    event.respondWith(fetch(request));
+    return;
   }
+
+  // 2) Navigations (the HTML document) — network-first, cache as offline fallback.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      (async () => {
+        try {
+          const fresh = await fetch(request);
+          const cache = await caches.open(CACHE_NAME);
+          cache.put(request, fresh.clone());
+          return fresh;
+        } catch {
+          const cached = await caches.match(request);
+          return cached || caches.match('./index.html');
+        }
+      })()
+    );
+    return;
+  }
+
+  // 3) Other assets — network-first, fall back to cache when offline.
+  event.respondWith(
+    (async () => {
+      try {
+        const fresh = await fetch(request);
+        if (fresh.ok) {
+          const cache = await caches.open(CACHE_NAME);
+          cache.put(request, fresh.clone());
+        }
+        return fresh;
+      } catch {
+        const cached = await caches.match(request);
+        if (cached) return cached;
+        throw new Error('Network error and no cached response');
+      }
+    })()
+  );
 });
