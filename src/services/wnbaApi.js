@@ -1,146 +1,207 @@
 // WNBA API service — strict data validation & integrity checks
-const API_HOST = import.meta.env.VITE_RAPIDAPI_HOST;
+//
+// Data source: RapidAPI "wnba-api" (wnba-api.p.rapidapi.com), which mirrors
+// ESPN's public scoreboard JSON. The scoreboard response shape is:
+//   { events: [ { date, competitions: [ { date, competitors: [...],
+//                 broadcasts: [...], geoBroadcasts: [...] } ] } ] }
+// Each competitor has: homeAway, team.abbreviation, team.displayName,
+// and records[].summary (e.g. "12-4").
+const API_HOST = import.meta.env.VITE_RAPIDAPI_HOST || 'wnba-api.p.rapidapi.com';
 const API_KEY = import.meta.env.VITE_RAPIDAPI_KEY;
 
+// Candidate scoreboard endpoints. The exact path varies by API version, so we
+// try each in order and use the first that returns a valid scoreboard payload.
+// {Y}/{M}/{D} are replaced with zero-padded date parts.
+const ENDPOINT_CANDIDATES = [
+  '/wnbascoreboard?year={Y}&month={M}&day={D}',
+  '/wnbaschedule?year={Y}&month={M}&day={D}',
+  '/scoreboard?year={Y}&month={M}&day={D}',
+  '/schedule?year={Y}&month={M}&day={D}',
+];
+
 const TEAM_EMOJIS = {
-  ATL: '🐦',
-  CHI: '🌟',
-  CON: '💚',
-  DAL: '✨',
-  IND: '⚡',
-  LA: '👑',
-  LV: '🏜️',
-  MIN: '🐺',
-  NY: '🗽',
-  PHX: '🔥',
-  SEA: '🌧️',
-  WSH: '🎭',
+  ATL: '🐝',   // Atlanta Dream
+  CHI: '☁️',   // Chicago Sky
+  CONN: '☀️',  // Connecticut Sun
+  CON: '☀️',
+  DAL: '🪽',   // Dallas Wings
+  GSV: '⚔️',   // Golden State Valkyries
+  GS: '⚔️',
+  IND: '⚡',   // Indiana Fever
+  LV: '🎰',    // Las Vegas Aces
+  LA: '👑',    // Los Angeles Sparks
+  MIN: '🐺',   // Minnesota Lynx
+  NY: '🗽',    // New York Liberty
+  NYL: '🗽',
+  PHX: '🔥',   // Phoenix Mercury
+  SEA: '🌊',   // Seattle Storm
+  WAS: '🎆',   // Washington Mystics
+  WSH: '🎆',
+  TOR: '🦖',   // Toronto Tempo (2026)
+  POR: '🌹',   // Portland (2026)
 };
 
 const TEAM_COLORS = {
-  ATL: { primary: '#E03C28', secondary: '#C4CED3' },
-  CHI: { primary: '#CE1141', secondary: '#000000' },
-  CON: { primary: '#144620', secondary: '#08244F' },
-  DAL: { primary: '#00659C', secondary: '#B8860B' },
-  IND: { primary: '#002D62', secondary: '#FFCD00' },
-  LA: { primary: '#2D2F8E', secondary: '#FDB927' },
-  LV: { primary: '#702F8A', secondary: '#E25C3D' },
-  MIN: { primary: '#094C3B', secondary: '#FDB927' },
-  NY: { primary: '#0C2E4D', secondary: '#E0861D' },
   PHX: { primary: '#9B2C42', secondary: '#E8855B' },
-  SEA: { primary: '#00471B', secondary: '#A4A9AC' },
-  WSH: { primary: '#C41E3A', secondary: '#002B5C' },
+  // Others fall back to the Mercury-neutral default below.
 };
+
+const DEFAULT_COLORS = { primary: '#6b6375', secondary: '#c4ced3' };
 
 export async function fetchTodaysGames() {
   if (!API_KEY) {
-    throw new Error('RapidAPI key not configured. Add VITE_RAPIDAPI_KEY to .env');
+    throw new Error('RapidAPI key not configured. Add VITE_RAPIDAPI_KEY.');
   }
 
-  try {
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    const response = await fetch(
-      `https://${API_HOST}/games?date=${today}`,
-      {
-        method: 'GET',
-        headers: {
-          'x-rapidapi-key': API_KEY,
-          'x-rapidapi-host': API_HOST,
-        },
+  // Compute "today" in US Eastern time, since WNBA scheduling is ET-based.
+  const { Y, M, D } = easternDateParts();
+
+  const headers = {
+    'x-rapidapi-key': API_KEY,
+    'x-rapidapi-host': API_HOST,
+  };
+
+  let lastError = null;
+  for (const template of ENDPOINT_CANDIDATES) {
+    const path = template
+      .replace('{Y}', Y)
+      .replace('{M}', M)
+      .replace('{D}', D);
+    const url = `https://${API_HOST}${path}`;
+
+    try {
+      const response = await fetch(url, { method: 'GET', headers });
+
+      if (response.status === 404) {
+        // Wrong path for this API version — try the next candidate.
+        lastError = new Error(`404 at ${path}`);
+        continue;
       }
-    );
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
 
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status} ${response.statusText}`);
+      const data = await response.json();
+      const events = extractEvents(data);
+      if (events === null) {
+        // Reached an endpoint but it isn't a scoreboard — try next candidate.
+        lastError = new Error(`Unexpected response shape at ${path}`);
+        continue;
+      }
+
+      const games = events
+        .map(normalizeGame)
+        .filter(Boolean)
+        .sort((a, b) => new Date(a.tipOffTime) - new Date(b.tipOffTime));
+
+      return {
+        games,
+        fetchedAt: new Date().toISOString(),
+        source: 'wnba-api (ESPN)',
+      };
+    } catch (err) {
+      lastError = err;
+      // Network/parse error — stop trying alternates only for non-404 HTTP errors
+      if (err.message.startsWith('API error:')) {
+        throw err;
+      }
     }
-
-    const data = await response.json();
-    const games = validateAndNormalizeGames(data);
-
-    return {
-      games,
-      fetchedAt: new Date().toISOString(),
-      source: 'WNBA API (ESPN)',
-    };
-  } catch (error) {
-    throw new Error(`Failed to fetch today's games: ${error.message}`);
-  }
-}
-
-function validateAndNormalizeGames(data) {
-  // Validate response structure
-  if (!data || typeof data !== 'object') {
-    throw new Error('Invalid API response: expected object');
   }
 
-  const rawGames = Array.isArray(data) ? data : data.games || [];
-
-  if (!Array.isArray(rawGames)) {
-    throw new Error('Invalid API response: games not an array');
-  }
-
-  return rawGames
-    .filter(game => isValidGame(game))
-    .map(game => normalizeGame(game))
-    .sort((a, b) => new Date(a.tipOffTime) - new Date(b.tipOffTime));
-}
-
-function isValidGame(game) {
-  // Strict validation: only include games with required fields
-  return (
-    game &&
-    typeof game === 'object' &&
-    game.homeTeam?.abbreviation &&
-    game.awayTeam?.abbreviation &&
-    game.startTimeUTC &&
-    (game.broadcasts?.length > 0 || game.broadcastChannel)
+  throw new Error(
+    `Could not load games. ${lastError ? lastError.message : 'No endpoint responded.'}`
   );
 }
 
-function normalizeGame(game) {
-  const homeTeam = game.homeTeam;
-  const awayTeam = game.awayTeam;
-  const broadcast = Array.isArray(game.broadcasts) ? game.broadcasts[0] : { name: game.broadcastChannel };
+// Returns the events array from a scoreboard payload, or null if the response
+// doesn't look like a scoreboard.
+function extractEvents(data) {
+  if (!data || typeof data !== 'object') return null;
+  if (Array.isArray(data.events)) return data.events;
+  // Some variants nest the payload one level deeper.
+  if (data.scoreboard && Array.isArray(data.scoreboard.events)) {
+    return data.scoreboard.events;
+  }
+  return null;
+}
 
-  // Parse tip-off time to EDT
-  const tipOffUTC = new Date(game.startTimeUTC);
-  const tipOffEDT = new Date(tipOffUTC.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+function normalizeGame(event) {
+  const competition = event?.competitions?.[0];
+  const competitors = competition?.competitors;
+  if (!Array.isArray(competitors) || competitors.length < 2) return null;
+
+  const home = competitors.find(c => c.homeAway === 'home') || competitors[0];
+  const away = competitors.find(c => c.homeAway === 'away') || competitors[1];
+  if (!home?.team?.abbreviation || !away?.team?.abbreviation) return null;
+
+  const tipOffTime = competition.date || event.date;
+  if (!tipOffTime) return null;
 
   return {
-    id: game.gameId || `${game.startTimeUTC}-${homeTeam.abbreviation}-${awayTeam.abbreviation}`,
-    homeTeam: {
-      abbreviation: homeTeam.abbreviation,
-      name: homeTeam.name,
-      emoji: TEAM_EMOJIS[homeTeam.abbreviation] || '🏀',
-      record: homeTeam.record || null,
-      colors: TEAM_COLORS[homeTeam.abbreviation] || { primary: '#000', secondary: '#fff' },
-    },
-    awayTeam: {
-      abbreviation: awayTeam.abbreviation,
-      name: awayTeam.name,
-      emoji: TEAM_EMOJIS[awayTeam.abbreviation] || '🏀',
-      record: awayTeam.record || null,
-      colors: TEAM_COLORS[awayTeam.abbreviation] || { primary: '#000', secondary: '#fff' },
-    },
-    tipOffTime: tipOffEDT.toISOString(),
-    tipOffTimeLocal: tipOffEDT,
-    broadcastChannel: broadcast.name || 'TBD',
-    status: game.status || 'scheduled',
+    id: event.id || `${tipOffTime}-${away.team.abbreviation}-${home.team.abbreviation}`,
+    homeTeam: buildTeam(home),
+    awayTeam: buildTeam(away),
+    tipOffTime,
+    broadcastChannel: extractBroadcast(competition),
+    status: competition.status?.type?.shortDetail || event.status?.type?.shortDetail || 'Scheduled',
   };
 }
 
-export function getTeamEmoji(abbreviation) {
-  return TEAM_EMOJIS[abbreviation] || '🏀';
+function buildTeam(competitor) {
+  const abbr = competitor.team.abbreviation;
+  return {
+    abbreviation: abbr,
+    name: competitor.team.displayName || competitor.team.name || abbr,
+    emoji: TEAM_EMOJIS[abbr] || '🏀',
+    record: extractRecord(competitor),
+    colors: TEAM_COLORS[abbr] || DEFAULT_COLORS,
+  };
 }
 
-export function getTeamColors(abbreviation) {
-  return TEAM_COLORS[abbreviation] || { primary: '#000', secondary: '#fff' };
+// Season record — prefer the overall ("total") record, e.g. "12-4".
+function extractRecord(competitor) {
+  const records = competitor.records;
+  if (!Array.isArray(records) || records.length === 0) return null;
+  const total =
+    records.find(r => r.type === 'total' || r.name === 'overall') || records[0];
+  return total?.summary || null;
+}
+
+// TV network — national broadcast preferred, then geo broadcast.
+function extractBroadcast(competition) {
+  const broadcasts = competition.broadcasts;
+  if (Array.isArray(broadcasts) && broadcasts.length > 0) {
+    const names = broadcasts[0].names || broadcasts[0].media?.shortName;
+    if (Array.isArray(names) && names.length > 0) return names.join('/');
+    if (typeof names === 'string') return names;
+  }
+  const geo = competition.geoBroadcasts;
+  if (Array.isArray(geo) && geo.length > 0) {
+    const name = geo[0].media?.shortName || geo[0].media?.callLetters;
+    if (name) return name;
+  }
+  return 'TBD';
+}
+
+// Date parts (zero-padded) for "today" in US Eastern time.
+function easternDateParts() {
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const parts = Object.fromEntries(
+    fmt.formatToParts(new Date()).map(p => [p.type, p.value])
+  );
+  return { Y: parts.year, M: parts.month, D: parts.day };
 }
 
 export function formatTimeEDT(isoString) {
   const date = new Date(isoString);
+  if (isNaN(date)) return 'TBD';
   return date.toLocaleTimeString('en-US', {
-    hour: '2-digit',
+    hour: 'numeric',
     minute: '2-digit',
     timeZone: 'America/New_York',
     hour12: true,
@@ -149,15 +210,11 @@ export function formatTimeEDT(isoString) {
 
 export function formatLastUpdated(isoString) {
   const date = new Date(isoString);
-  const now = new Date();
-  const diffMs = now - date;
-  const diffMins = Math.floor(diffMs / 60000);
+  const diffMins = Math.floor((Date.now() - date.getTime()) / 60000);
 
   if (diffMins < 1) return 'Just now';
   if (diffMins < 60) return `${diffMins}m ago`;
-
   const diffHours = Math.floor(diffMins / 60);
   if (diffHours < 24) return `${diffHours}h ago`;
-
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }

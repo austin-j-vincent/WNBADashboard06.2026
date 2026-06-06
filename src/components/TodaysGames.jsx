@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchTodaysGames, formatTimeEDT, formatLastUpdated } from '../services/wnbaApi';
+import { fetchTodaysGames, formatLastUpdated } from '../services/wnbaApi';
 import GameCell from './GameCell';
 import './TodaysGames.css';
 
