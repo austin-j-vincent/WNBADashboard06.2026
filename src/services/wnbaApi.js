@@ -19,31 +19,47 @@ const ENDPOINT_CANDIDATES = [
   '/schedule?year={Y}&month={M}&day={D}',
 ];
 
-const TEAM_EMOJIS = {
-  // Official WNBA team emojis and acronyms per 2026 naming conventions
-  ATL: '💭',   // Atlanta Dream
-  CHI: '🌃',   // Chicago Sky
-  CON: '🌞',   // Connecticut Sun
-  IND: '🌡️',   // Indiana Fever
-  NYL: '🗽',   // New York Liberty
-  TOR: '🎵',   // Toronto Tempo
-  DAL: '🪽',   // Dallas Wings
-  LAS: '✨',   // Los Angeles Sparks
-  GSV: '⚔️',   // Golden State Valkyries
-  MIN: '😼',   // Minnesota Lynx
-  SEA: '⛈️',   // Seattle Storm
-  PHX: '🪐',   // Phoenix Mercury
-  PDX: '🔥',   // Portland Fire
-  LVA: '♦️',   // Las Vegas Aces
-  WAS: '🔮',   // Washington Mystics
-  // Fallbacks for alternate acronym forms that might come from API
-  CONN: '🌞',  // Connecticut (alternate)
-  LA: '✨',    // Los Angeles (alternate)
-  LV: '♦️',    // Las Vegas (alternate)
-  NY: '🗽',    // New York (alternate)
-  POR: '🔥',   // Portland (alternate)
-  WSH: '🔮',   // Washington (alternate)
-};
+// Canonical team registry — the single source of truth for how every team is
+// displayed. `acronym` and `emoji` follow the official 2026 naming conventions.
+// `aliases` lists the abbreviations the API may send (e.g. ESPN sends "NY",
+// "LA", "CONN"); `match` lets us resolve a team by name if the abbreviation is
+// unfamiliar, so a team can never display with the wrong code.
+const TEAMS = [
+  { acronym: 'ATL', emoji: '💭', aliases: ['ATL'], match: ['atlanta', 'dream'] },
+  { acronym: 'CHI', emoji: '🌃', aliases: ['CHI'], match: ['chicago', 'sky'] },
+  { acronym: 'CON', emoji: '🌞', aliases: ['CON', 'CONN'], match: ['connecticut', 'sun'] },
+  { acronym: 'IND', emoji: '🌡️', aliases: ['IND'], match: ['indiana', 'fever'] },
+  { acronym: 'NYL', emoji: '🗽', aliases: ['NYL', 'NY'], match: ['new york', 'liberty'] },
+  { acronym: 'TOR', emoji: '🎵', aliases: ['TOR'], match: ['toronto', 'tempo'] },
+  { acronym: 'DAL', emoji: '🪽', aliases: ['DAL'], match: ['dallas', 'wings'] },
+  { acronym: 'LAS', emoji: '✨', aliases: ['LAS', 'LA'], match: ['los angeles', 'sparks'] },
+  { acronym: 'GSV', emoji: '⚔️', aliases: ['GSV', 'GS', 'GV'], match: ['golden state', 'valkyries'] },
+  { acronym: 'MIN', emoji: '😼', aliases: ['MIN'], match: ['minnesota', 'lynx'] },
+  { acronym: 'SEA', emoji: '⛈️', aliases: ['SEA'], match: ['seattle', 'storm'] },
+  { acronym: 'PHX', emoji: '🪐', aliases: ['PHX', 'PHO'], match: ['phoenix', 'mercury'] },
+  { acronym: 'PDX', emoji: '🔥', aliases: ['PDX', 'POR'], match: ['portland', 'fire'] },
+  { acronym: 'LVA', emoji: '♦️', aliases: ['LVA', 'LV'], match: ['las vegas', 'aces'] },
+  { acronym: 'WAS', emoji: '🔮', aliases: ['WAS', 'WSH'], match: ['washington', 'mystics'] },
+];
+
+// Resolve an API team object to its canonical { acronym, emoji }.
+// Order: exact abbreviation alias -> all name keywords -> any name keyword ->
+// safe fallback (show the raw abbreviation rather than break).
+function resolveTeam(apiTeam) {
+  const rawAbbr = (apiTeam?.abbreviation || '').toUpperCase();
+  const name = (apiTeam?.displayName || apiTeam?.shortDisplayName || apiTeam?.name || apiTeam?.location || '').toLowerCase();
+
+  const byAlias = TEAMS.find(t => t.aliases.includes(rawAbbr));
+  if (byAlias) return byAlias;
+
+  const byFullName = TEAMS.find(t => t.match.every(kw => name.includes(kw)));
+  if (byFullName) return byFullName;
+
+  const byAnyName = TEAMS.find(t => t.match.some(kw => name.includes(kw)));
+  if (byAnyName) return byAnyName;
+
+  return { acronym: rawAbbr || '???', emoji: '🏀' };
+}
 
 const TEAM_COLORS = {
   PHX: { primary: '#9B2C42', secondary: '#E8855B' },
@@ -152,13 +168,13 @@ function normalizeGame(event) {
 }
 
 function buildTeam(competitor) {
-  const abbr = competitor.team.abbreviation;
+  const { acronym, emoji } = resolveTeam(competitor.team);
   return {
-    abbreviation: abbr,
-    name: competitor.team.displayName || competitor.team.name || abbr,
-    emoji: TEAM_EMOJIS[abbr] || '🏀',
+    abbreviation: acronym,
+    name: competitor.team.displayName || competitor.team.name || acronym,
+    emoji,
     record: extractRecord(competitor),
-    colors: TEAM_COLORS[abbr] || DEFAULT_COLORS,
+    colors: TEAM_COLORS[acronym] || DEFAULT_COLORS,
   };
 }
 
