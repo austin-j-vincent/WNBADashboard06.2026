@@ -1,9 +1,10 @@
 name: Deploy to GitHub Pages
 
 on:
-  # Deploy on every push to the development branch
+  # Deploy on every push to the main or development branch
   push:
     branches:
+      - main
       - claude/wizardly-turing-LIuzI
   # Allow manual runs from the Actions tab
   workflow_dispatch:
