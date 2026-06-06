@@ -21,28 +21,28 @@ const ENDPOINT_CANDIDATES = [
 
 const TEAM_EMOJIS = {
   // Official WNBA team emojis and acronyms per 2026 naming conventions
-  ATL: '☁️',   // Atlanta Dream
-  CHI: '🏙️',   // Chicago Sky
-  CON: '☀️',   // Connecticut Sun
-  IND: '🎀',   // Indiana Fever
+  ATL: '💭',   // Atlanta Dream
+  CHI: '🌃',   // Chicago Sky
+  CON: '🌞',   // Connecticut Sun
+  IND: '🌡️',   // Indiana Fever
   NYL: '🗽',   // New York Liberty
   TOR: '🎵',   // Toronto Tempo
-  DAL: '🪶',   // Dallas Wings
+  DAL: '🪽',   // Dallas Wings
   LAS: '✨',   // Los Angeles Sparks
   GSV: '⚔️',   // Golden State Valkyries
-  MIN: '👑',   // Minnesota Lynx
+  MIN: '😼',   // Minnesota Lynx
   SEA: '⛈️',   // Seattle Storm
-  PHX: '🔥',   // Phoenix Mercury
+  PHX: '🪐',   // Phoenix Mercury
   PDX: '🔥',   // Portland Fire
   LVA: '♦️',   // Las Vegas Aces
-  WAS: '🎭',   // Washington Mystics
+  WAS: '🔮',   // Washington Mystics
   // Fallbacks for alternate acronym forms that might come from API
-  CONN: '☀️',  // Connecticut (alternate)
+  CONN: '🌞',  // Connecticut (alternate)
   LA: '✨',    // Los Angeles (alternate)
   LV: '♦️',    // Las Vegas (alternate)
   NY: '🗽',    // New York (alternate)
   POR: '🔥',   // Portland (alternate)
-  WSH: '🎭',   // Washington (alternate)
+  WSH: '🔮',   // Washington (alternate)
 };
 
 const TEAM_COLORS = {
