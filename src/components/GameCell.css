@@ -1,0 +1,109 @@
+.game-cell {
+  background: white;
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid #e0e0e0;
+  transition: all 0.2s;
+}
+
+.game-cell:hover {
+  border-color: #9b2c42;
+  box-shadow: 0 2px 6px rgba(155, 44, 66, 0.15);
+}
+
+.game-time-channel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.time {
+  font-size: 13px;
+  font-weight: 600;
+  color: #9b2c42;
+}
+
+.channel {
+  font-size: 11px;
+  color: #999;
+  background: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.game-matchup {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 8px;
+}
+
+.team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.team.away-team {
+  text-align: center;
+}
+
+.team.home-team {
+  text-align: center;
+}
+
+.emoji {
+  font-size: 28px;
+}
+
+.team-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.abbreviation {
+  font-size: 14px;
+  font-weight: 700;
+  color: #222;
+  line-height: 1;
+}
+
+.record {
+  font-size: 11px;
+  color: #999;
+  font-weight: 500;
+}
+
+.vs {
+  font-size: 12px;
+  color: #ccc;
+  font-weight: 600;
+  margin: 0 4px;
+}
+
+@media (min-width: 480px) {
+  .game-cell {
+    padding: 14px;
+  }
+
+  .emoji {
+    font-size: 32px;
+  }
+
+  .abbreviation {
+    font-size: 16px;
+  }
+
+  .record {
+    font-size: 12px;
+  }
+}
