@@ -1,12 +1,11 @@
 name: Deploy to GitHub Pages
 
 on:
-  # Deploy on every push to the deployment branch.
-  # NOTE: the github-pages environment is locked to this branch by a protection
-  # rule, so we deploy only from here to avoid failed/cancelled runs.
+  # Deploy on every push to main (the default branch and deploy source).
+  # Development happens on feature branches and is merged into main to release.
   push:
     branches:
-      - claude/wizardly-turing-LIuzI
+      - main
   # Allow manual runs from the Actions tab
   workflow_dispatch:
 
