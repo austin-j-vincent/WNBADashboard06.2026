@@ -1,0 +1,111 @@
+/* The module shell (.todays-games) and shared states (.module-header,
+   .collapse-btn, .error-state, .retry-btn, .loading-state, .module-footer)
+   are reused from TodaysGames.css. Only the table-specific styles live here. */
+
+.no-standings-state {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.standings-table {
+  padding: 6px 0 2px;
+}
+
+/* Shared 7-column grid: #, Team, W, L, PCT, GB, STRK. Compact to fit ~360px. */
+.standings-head,
+.standings-row {
+  display: grid;
+  grid-template-columns: 24px minmax(56px, 1fr) 26px 26px 48px 36px 42px;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 12px;
+}
+
+.standings-head {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.standings-row {
+  font-size: 13px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+.standings-head .rank,
+.standings-row .rank,
+.standings-head .stat,
+.standings-row .stat {
+  text-align: center;
+}
+
+.standings-row .rank {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.team-col {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* Override GameCell's large .emoji/.abbreviation sizing for the compact table. */
+.standings-table .emoji {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.standings-table .abbreviation {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.standings-row .stat {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Streak tint derived from the API's leading W/L (presentation only). */
+.streak.win {
+  color: #1f9d57;
+  font-weight: 700;
+}
+
+.streak.loss {
+  color: var(--error-fg);
+  font-weight: 700;
+}
+
+/* The playoff cutoff line between the 8th and 9th teams. */
+.playoff-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+}
+
+.playoff-divider::before,
+.playoff-divider::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: var(--wnba-orange);
+  border-radius: 2px;
+}
+
+.playoff-divider span {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--wnba-orange);
+  white-space: nowrap;
+}

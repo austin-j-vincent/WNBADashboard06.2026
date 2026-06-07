@@ -1,5 +1,6 @@
 import './App.css'
 import TodaysGames from './components/TodaysGames'
+import Standings from './components/Standings'
 import ThemeToggle from './components/ThemeToggle'
 import RefreshButton from './components/RefreshButton'
 import RefreshOverlay from './components/RefreshOverlay'
@@ -17,6 +18,7 @@ function App() {
         </header>
         <main className="app-content">
           <TodaysGames />
+          <Standings />
         </main>
       </div>
       <RefreshOverlay />
