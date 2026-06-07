@@ -109,9 +109,3 @@
   color: var(--wnba-orange);
   white-space: nowrap;
 }
-
-.standings-legend {
-  padding: 8px 12px 4px;
-  text-align: center;
-  color: var(--text-muted);
-}

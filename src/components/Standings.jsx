@@ -42,7 +42,11 @@ export default function Standings() {
     <div className="standings todays-games">
       <div className="module-header" onClick={toggleCollapse}>
         <h2>📊 Standings</h2>
-        <button className="collapse-btn" aria-label="Toggle standings">
+        <button
+          className="collapse-btn"
+          aria-label="Toggle standings"
+          aria-expanded={!isCollapsed}
+        >
           {isCollapsed ? '▼' : '▲'}
         </button>
       </div>
@@ -67,40 +71,39 @@ export default function Standings() {
           )}
 
           {!loading && standings.length > 0 && (
-            <div className="standings-table">
-              <div className="standings-head">
-                <span className="rank">#</span>
-                <span className="team-col">Team</span>
-                <span className="stat">W</span>
-                <span className="stat">L</span>
-                <span className="stat">PCT</span>
-                <span className="stat">GB</span>
-                <span className="stat">STRK</span>
+            <div className="standings-table" role="table" aria-label="WNBA standings">
+              <div className="standings-head" role="row">
+                <span className="rank" role="columnheader">#</span>
+                <span className="team-col" role="columnheader">Team</span>
+                <span className="stat" role="columnheader">W</span>
+                <span className="stat" role="columnheader">L</span>
+                <span className="stat" role="columnheader">PCT</span>
+                <span className="stat" role="columnheader">GB</span>
+                <span className="stat" role="columnheader">STRK</span>
               </div>
 
               {standings.map((row, i) => (
-                <div key={row.team.abbreviation + row.rank}>
-                  <div
-                    className={`standings-row${row.isPlayoff ? ' playoff' : ''}`}
-                    style={{ '--team': row.team.colors.primary }}
-                  >
-                    <span className="rank">{row.rank}</span>
-                    <span className="team-col">
+                <div key={row.team.abbreviation} role="presentation">
+                  <div className="standings-row" role="row">
+                    <span className="rank" role="cell">{row.rank}</span>
+                    <span className="team-col" role="cell">
                       <span className="emoji">{row.team.emoji}</span>
                       <span className="abbreviation">{row.team.abbreviation}</span>
                     </span>
-                    <span className="stat">{row.wins ?? '—'}</span>
-                    <span className="stat">{row.losses ?? '—'}</span>
-                    <span className="stat">{row.pct ?? '—'}</span>
-                    <span className="stat">{row.gamesBehind ?? '—'}</span>
-                    <span className={`stat streak ${streakClass(row.streak)}`}>
+                    <span className="stat" role="cell">{row.wins ?? '—'}</span>
+                    <span className="stat" role="cell">{row.losses ?? '—'}</span>
+                    <span className="stat" role="cell">{row.pct ?? '—'}</span>
+                    <span className="stat" role="cell">{row.gamesBehind ?? '—'}</span>
+                    <span className={`stat streak ${streakClass(row.streak)}`} role="cell">
                       {row.streak ?? '—'}
                     </span>
                   </div>
 
-                  {/* Playoff cutoff line between the 8th and 9th teams */}
-                  {row.rank === 8 && i < standings.length - 1 && (
-                    <div className="playoff-divider">
+                  {/* Playoff cutoff line after the 8th row (top 8 make the
+                      playoffs). Gated on position so it can't double-render on
+                      tied seeds or vanish when no team has seed exactly 8. */}
+                  {i === 7 && i < standings.length - 1 && (
+                    <div className="playoff-divider" aria-hidden="true">
                       <span>Playoffs</span>
                     </div>
                   )}
