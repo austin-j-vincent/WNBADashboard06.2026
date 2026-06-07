@@ -24,16 +24,18 @@ export default function ThemeToggle() {
   const toggle = () => setTheme(t => (t === 'dark' ? 'light' : 'dark'));
 
   return (
-    <div className="theme-toggle-slider">
-      <span className="theme-icon light">🌙</span>
-      <button
-        className="slider-button"
-        onClick={toggle}
-        aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-        title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-        data-theme={theme}
-      />
-      <span className="theme-icon dark">☀️</span>
-    </div>
+    <button
+      className="theme-toggle-slider"
+      onClick={toggle}
+      data-theme={theme}
+      role="switch"
+      aria-checked={theme === 'dark'}
+      aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+    >
+      {/* The knob slides left (day) ↔ right (night) and shows the active
+          mode's emoji — sun in day mode, moon in night mode. */}
+      <span className="slider-knob">{theme === 'dark' ? '🌙' : '☀️'}</span>
+    </button>
   );
 }
