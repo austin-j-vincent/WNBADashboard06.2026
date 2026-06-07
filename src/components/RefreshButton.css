@@ -1,0 +1,56 @@
+.refresh-button {
+  width: 52px;
+  height: 28px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.refresh-button:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--wnba-orange);
+}
+
+.refresh-button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.refresh-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.refresh-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.refresh-button:disabled .refresh-icon {
+  animation: spin-basketball 1s linear infinite;
+}
+
+@keyframes spin-basketball {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.refresh-text {
+  font-size: 12px;
+  display: none; /* hidden on small screens */
+}
+
+@media (min-width: 480px) {
+  .refresh-text {
+    display: inline;
+  }
+}
