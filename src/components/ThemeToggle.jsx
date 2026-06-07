@@ -6,6 +6,14 @@ function getInitialTheme() {
     const current = document.documentElement.getAttribute('data-theme');
     if (current === 'dark' || current === 'light') return current;
   }
+  // Fall back to the persisted choice if the pre-paint script didn't set the
+  // attribute (e.g. it hit its catch), so we never clobber a saved preference.
+  try {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+  } catch {
+    // localStorage unavailable — fall through to default
+  }
   return 'light';
 }
 

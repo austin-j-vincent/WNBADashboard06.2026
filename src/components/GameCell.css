@@ -20,6 +20,9 @@
   left: 0;
   right: 0;
   height: 4px;
+  /* Fallback for browsers without color-mix(); the lightened version below
+     overrides it where supported. */
+  background: linear-gradient(90deg, var(--away) 0%, var(--home) 100%);
   background: linear-gradient(
     90deg,
     color-mix(in srgb, var(--away) 80%, white) 0%,
@@ -69,6 +72,9 @@
   text-align: center;
   padding: 8px 4px;
   border-radius: 8px;
+  /* Fallback for browsers without color-mix(); transparent so untinted
+     columns stay readable on --surface. */
+  background: transparent;
   background: color-mix(in srgb, var(--team) 12%, transparent);
 }
 
