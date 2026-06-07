@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { Fragment, useState, useEffect, useCallback } from 'react';
 import { fetchStandings, formatLastUpdated } from '../services/wnbaApi';
 import { useRefresh } from '../contexts/RefreshContext';
 import './Standings.css';
@@ -83,7 +83,11 @@ export default function Standings() {
               </div>
 
               {standings.map((row, i) => (
-                <div key={row.team.abbreviation} role="presentation">
+                // Fragment (no wrapper DOM node) keeps every row a direct child
+                // of role="table", so the table→row a11y relationship holds.
+                // Key combines acronym + the unique 1..N rank so it can't collide
+                // even if the API returns a duplicate/unmapped team.
+                <Fragment key={`${row.team.abbreviation}-${row.rank}`}>
                   <div className="standings-row" role="row">
                     <span className="rank" role="cell">{row.rank}</span>
                     <span className="team-col" role="cell">
@@ -107,7 +111,7 @@ export default function Standings() {
                       <span>Playoffs</span>
                     </div>
                   )}
-                </div>
+                </Fragment>
               ))}
             </div>
           )}
