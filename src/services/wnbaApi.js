@@ -315,9 +315,12 @@ function normalizeStanding(entry) {
     team: buildStandingTeam(entry.team),
     wins: statText(winsStat),
     losses: statText(lossesStat),
-    // Format the API's win% to the requested 0.XXX (leading zero, 3 decimals);
-    // fall back to the API's own displayValue if a numeric value isn't present.
-    pct: Number.isFinite(pctStat?.value) ? pctStat.value.toFixed(3) : (pctStat?.displayValue ?? null),
+    // Format the API's win% to the conventional .XXX (3 decimals, no leading
+    // zero); a perfect 1.000 keeps its leading digit. Fall back to the API's
+    // own displayValue if a numeric value isn't present.
+    pct: Number.isFinite(pctStat?.value)
+      ? pctStat.value.toFixed(3).replace(/^0\./, '.')
+      : (pctStat?.displayValue ?? null),
     gamesBehind: statText(gbStat),
     streak: statText(streakStat),
   };
