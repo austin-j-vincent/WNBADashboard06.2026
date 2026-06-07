@@ -19,22 +19,31 @@ const ENDPOINT_CANDIDATES = [
   '/schedule?year={Y}&month={M}&day={D}',
 ];
 
+// Candidate standings endpoints — primary is the confirmed path, second is a
+// defensive fallback. {Y} is replaced with the current season year (YYYY).
+const STANDINGS_ENDPOINT_CANDIDATES = [
+  '/wnbastandings?year={Y}',
+  '/standings?year={Y}',
+];
+
 // Once we discover which endpoint template works, remember it so future loads
 // hit the API exactly once instead of re-probing every candidate. This caches
-// the *endpoint path only* — never game data — so data integrity is preserved.
-const WORKING_ENDPOINT_KEY = 'wnba_working_endpoint';
+// the *endpoint path only* — never game/standings data — so integrity is kept.
+// Each feed (games, standings) uses its own localStorage key.
+const GAMES_ENDPOINT_KEY = 'wnba_working_endpoint';
+const STANDINGS_ENDPOINT_KEY = 'wnba_working_standings_endpoint';
 
-function getWorkingEndpoint() {
+function getWorkingEndpoint(key) {
   try {
-    return localStorage.getItem(WORKING_ENDPOINT_KEY);
+    return localStorage.getItem(key);
   } catch {
     return null;
   }
 }
 
-function setWorkingEndpoint(template) {
+function setWorkingEndpoint(key, template) {
   try {
-    localStorage.setItem(WORKING_ENDPOINT_KEY, template);
+    localStorage.setItem(key, template);
   } catch {
     // localStorage unavailable — fall back to re-probing next time
   }
@@ -120,7 +129,7 @@ export async function fetchTodaysGames() {
   // Try the previously-discovered endpoint first (if any), then the rest. This
   // keeps a successful load to a single API request and avoids burning the rate
   // limit on candidates we already know don't work.
-  const cached = getWorkingEndpoint();
+  const cached = getWorkingEndpoint(GAMES_ENDPOINT_KEY);
   const candidates = cached
     ? [cached, ...ENDPOINT_CANDIDATES.filter(t => t !== cached)]
     : ENDPOINT_CANDIDATES;
@@ -161,7 +170,7 @@ export async function fetchTodaysGames() {
       }
 
       // Remember the working endpoint so future loads make a single request.
-      setWorkingEndpoint(template);
+      setWorkingEndpoint(GAMES_ENDPOINT_KEY, template);
 
       const games = events
         .map(normalizeGame)
@@ -188,6 +197,138 @@ export async function fetchTodaysGames() {
   throw new Error(
     `Could not load games. ${lastError ? lastError.message : 'No endpoint responded.'}`
   );
+}
+
+// ===== Standings =====
+// Fetches the league standings (single table; top 8 make the playoffs). Mirrors
+// the games fetch: probes candidate endpoints, caches the working path, and
+// reads every displayed value straight from the API — nothing is computed.
+export async function fetchStandings() {
+  if (!API_KEY) {
+    throw new Error('RapidAPI key not configured. Add VITE_RAPIDAPI_KEY.');
+  }
+
+  // Standings are keyed by season year; use the current US Eastern year.
+  const { Y } = easternDateParts();
+
+  const headers = {
+    'x-rapidapi-key': API_KEY,
+    'x-rapidapi-host': API_HOST,
+  };
+
+  const cached = getWorkingEndpoint(STANDINGS_ENDPOINT_KEY);
+  const candidates = cached
+    ? [cached, ...STANDINGS_ENDPOINT_CANDIDATES.filter(t => t !== cached)]
+    : STANDINGS_ENDPOINT_CANDIDATES;
+
+  let lastError = null;
+  for (const template of candidates) {
+    const path = template.replace('{Y}', Y);
+    const url = `https://${API_HOST}${path}`;
+
+    try {
+      const response = await fetch(url, { method: 'GET', headers });
+
+      if (response.status === 404) {
+        lastError = new Error(`404 at ${path}`);
+        continue;
+      }
+      if (response.status === 429) {
+        throw new Error(
+          'Rate limit reached (429). The WNBA API is temporarily throttling ' +
+            'requests. Please wait a minute and try again.'
+        );
+      }
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const entries = extractStandingsEntries(data);
+      if (entries === null) {
+        // Reached an endpoint but it isn't a standings table — try next.
+        lastError = new Error(`Unexpected response shape at ${path}`);
+        continue;
+      }
+
+      setWorkingEndpoint(STANDINGS_ENDPOINT_KEY, template);
+
+      const standings = entries
+        .map(normalizeStanding)
+        .filter(Boolean)
+        .sort((a, b) => a.rank - b.rank);
+
+      return {
+        standings,
+        fetchedAt: new Date().toISOString(),
+        source: 'wnba-api (ESPN)',
+      };
+    } catch (err) {
+      lastError = err;
+      if (
+        err.message.startsWith('API error:') ||
+        err.message.startsWith('Rate limit')
+      ) {
+        throw err;
+      }
+    }
+  }
+
+  throw new Error(
+    `Could not load standings. ${lastError ? lastError.message : 'No endpoint responded.'}`
+  );
+}
+
+// Returns the standings entries array, or null if the response isn't standings.
+function extractStandingsEntries(data) {
+  if (!data || typeof data !== 'object') return null;
+  const entries = data.standings?.entries;
+  return Array.isArray(entries) ? entries : null;
+}
+
+// Find a stat object in an entry's stats array by its ESPN `type`.
+function getStat(stats, type) {
+  if (!Array.isArray(stats)) return null;
+  return stats.find(s => s?.type === type) || null;
+}
+
+// Normalize one standings entry. Every value is read from the API; a missing
+// stat becomes null (rendered as "—" by the UI) — never computed locally.
+function normalizeStanding(entry, index) {
+  if (!entry?.team?.abbreviation) return null;
+  const stats = entry.stats;
+
+  const seed = getStat(stats, 'playoffseed');
+  const rank = Number.isFinite(seed?.value) ? seed.value : index + 1;
+
+  const winsStat = getStat(stats, 'wins');
+  const lossesStat = getStat(stats, 'losses');
+  const pctStat = getStat(stats, 'winpercent');
+  const gbStat = getStat(stats, 'gamesbehind');
+  const streakStat = getStat(stats, 'streak');
+
+  return {
+    rank,
+    team: buildStandingTeam(entry.team),
+    wins: winsStat?.displayValue ?? (winsStat?.value != null ? String(winsStat.value) : null),
+    losses: lossesStat?.displayValue ?? (lossesStat?.value != null ? String(lossesStat.value) : null),
+    // Format the API's win% to the requested 0.XXX (leading zero, 3 decimals).
+    pct: Number.isFinite(pctStat?.value) ? pctStat.value.toFixed(3) : null,
+    gamesBehind: gbStat?.displayValue ?? null,
+    streak: streakStat?.displayValue ?? null,
+    isPlayoff: rank <= 8, // top 8 qualify for the playoffs
+  };
+}
+
+// Build a standings team object (canonical acronym + emoji + colors), reusing
+// the same resolution + color map as the games module.
+function buildStandingTeam(apiTeam) {
+  const { acronym, emoji } = resolveTeam(apiTeam);
+  return {
+    abbreviation: acronym,
+    emoji,
+    colors: TEAM_COLORS[acronym] || DEFAULT_COLORS,
+  };
 }
 
 // Returns the events array from a scoreboard payload, or null if the response
