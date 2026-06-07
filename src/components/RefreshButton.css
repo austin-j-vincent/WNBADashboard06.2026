@@ -21,8 +21,10 @@
   border-color: var(--wnba-orange);
 }
 
+/* Keep the translateY(-50%) centering from App.css when adding the press
+   scale, otherwise the transform property is replaced and the button jumps. */
 .refresh-button:active:not(:disabled) {
-  transform: scale(0.95);
+  transform: translateY(-50%) scale(0.95);
 }
 
 .refresh-button:disabled {

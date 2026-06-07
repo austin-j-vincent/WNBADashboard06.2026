@@ -5,7 +5,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Frosted glass: translucent wash + blur of everything behind it */
+  /* Frosted glass: translucent wash + blur of everything behind it.
+     Fallback first (so the wash still shows without color-mix support),
+     then the theme-aware color-mix version where supported. */
+  background: rgba(255, 255, 255, 0.55);
   background: color-mix(in srgb, var(--bg) 55%, transparent);
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);

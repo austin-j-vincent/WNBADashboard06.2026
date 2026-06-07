@@ -14,14 +14,16 @@ export function RefreshProvider({ children }) {
 
   // Called by RefreshButton; calls all registered modules' refresh functions.
   // Enforces a 1s minimum overlay display so a fast fetch doesn't just flash.
+  // Uses allSettled (and wraps each call) so one module rejecting can't dismiss
+  // the overlay early, abandon other modules, or surface an unhandled rejection.
   const triggerRefresh = useCallback(async () => {
     setIsRefreshing(true);
     const minDisplay = new Promise(resolve => setTimeout(resolve, 1000));
+    const refreshes = Array.from(modulesRef.current).map(refreshFn =>
+      Promise.resolve().then(refreshFn)
+    );
     try {
-      const refreshes = Array.from(modulesRef.current).map(refreshFn =>
-        Promise.resolve(refreshFn())
-      );
-      await Promise.all([...refreshes, minDisplay]);
+      await Promise.allSettled([...refreshes, minDisplay]);
     } finally {
       setIsRefreshing(false);
     }
