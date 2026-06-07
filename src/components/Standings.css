@@ -38,12 +38,6 @@
   border-bottom: 1px solid var(--border);
 }
 
-/* Subtle highlight on the top-8 (playoff) rows. Fallback first, then color-mix. */
-.standings-row.playoff {
-  background: rgba(255, 255, 255, 0.08);
-  background: color-mix(in srgb, white 8%, transparent);
-}
-
 .standings-head .rank,
 .standings-row .rank,
 .standings-head .stat,
