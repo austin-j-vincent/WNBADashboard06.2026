@@ -34,7 +34,7 @@ export default function TodaysGames() {
   return (
     <div className="todays-games">
       <div className="module-header" onClick={toggleCollapse}>
-        <h2>🏀 Today's Games</h2>
+        <h2>📅 Today's Games</h2>
         <button className="collapse-btn" aria-label="Toggle games list">
           {isCollapsed ? '▼' : '▲'}
         </button>
