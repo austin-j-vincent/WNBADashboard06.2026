@@ -1,11 +1,10 @@
 .refresh-button {
-  width: 52px;
   height: 28px;
-  padding: 0;
+  padding: 0 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 5px;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: var(--surface);
@@ -13,6 +12,7 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
   transition: background 0.3s ease, border-color 0.3s ease;
 }
 
