@@ -19,6 +19,27 @@ const ENDPOINT_CANDIDATES = [
   '/schedule?year={Y}&month={M}&day={D}',
 ];
 
+// Once we discover which endpoint template works, remember it so future loads
+// hit the API exactly once instead of re-probing every candidate. This caches
+// the *endpoint path only* — never game data — so data integrity is preserved.
+const WORKING_ENDPOINT_KEY = 'wnba_working_endpoint';
+
+function getWorkingEndpoint() {
+  try {
+    return localStorage.getItem(WORKING_ENDPOINT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function setWorkingEndpoint(template) {
+  try {
+    localStorage.setItem(WORKING_ENDPOINT_KEY, template);
+  } catch {
+    // localStorage unavailable — fall back to re-probing next time
+  }
+}
+
 // Canonical team registry — the single source of truth for how every team is
 // displayed. `acronym` and `emoji` follow the official 2026 naming conventions.
 // `aliases` lists the abbreviations the API may send (e.g. ESPN sends "NY",
@@ -96,8 +117,16 @@ export async function fetchTodaysGames() {
     'x-rapidapi-host': API_HOST,
   };
 
+  // Try the previously-discovered endpoint first (if any), then the rest. This
+  // keeps a successful load to a single API request and avoids burning the rate
+  // limit on candidates we already know don't work.
+  const cached = getWorkingEndpoint();
+  const candidates = cached
+    ? [cached, ...ENDPOINT_CANDIDATES.filter(t => t !== cached)]
+    : ENDPOINT_CANDIDATES;
+
   let lastError = null;
-  for (const template of ENDPOINT_CANDIDATES) {
+  for (const template of candidates) {
     const path = template
       .replace('{Y}', Y)
       .replace('{M}', M)
@@ -112,6 +141,13 @@ export async function fetchTodaysGames() {
         lastError = new Error(`404 at ${path}`);
         continue;
       }
+      if (response.status === 429) {
+        // Rate limited by RapidAPI — surface a clear, actionable message.
+        throw new Error(
+          'Rate limit reached (429). The WNBA API is temporarily throttling ' +
+            'requests. Please wait a minute and try again.'
+        );
+      }
       if (!response.ok) {
         throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
@@ -123,6 +159,9 @@ export async function fetchTodaysGames() {
         lastError = new Error(`Unexpected response shape at ${path}`);
         continue;
       }
+
+      // Remember the working endpoint so future loads make a single request.
+      setWorkingEndpoint(template);
 
       const games = events
         .map(normalizeGame)
@@ -136,8 +175,11 @@ export async function fetchTodaysGames() {
       };
     } catch (err) {
       lastError = err;
-      // Network/parse error — stop trying alternates only for non-404 HTTP errors
-      if (err.message.startsWith('API error:')) {
+      // Stop probing for definitive errors (rate limit, other HTTP errors).
+      if (
+        err.message.startsWith('API error:') ||
+        err.message.startsWith('Rate limit')
+      ) {
         throw err;
       }
     }
