@@ -33,13 +33,13 @@
 }
 
 .time {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--wnba-orange);
 }
 
 .channel {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-muted);
   background: var(--surface-2);
   padding: 4px 8px;

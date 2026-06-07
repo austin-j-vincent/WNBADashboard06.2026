@@ -6,7 +6,7 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>WNBA 2026 🧡</h1>
+        <h1>WNBA</h1>
         <p>Live Season Dashboard</p>
         <ThemeToggle />
       </header>

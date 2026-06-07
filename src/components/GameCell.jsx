@@ -28,7 +28,7 @@ export default function GameCell({ game }) {
           </div>
         </div>
 
-        <div className="vs">vs</div>
+        <div className="vs">@</div>
 
         <div className="team home-team" style={{ '--team': homeTeam.colors.primary }}>
           <span className="emoji">{homeTeam.emoji}</span>

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
+import './ThemeToggle.css';
 
-// The initial theme is set by an inline script in index.html (before paint),
-// so read it back from the <html> data-theme attribute to stay in sync.
 function getInitialTheme() {
   if (typeof document !== 'undefined') {
     const current = document.documentElement.getAttribute('data-theme');
@@ -23,16 +22,18 @@ export default function ThemeToggle() {
   }, [theme]);
 
   const toggle = () => setTheme(t => (t === 'dark' ? 'light' : 'dark'));
-  const next = theme === 'dark' ? 'light' : 'dark';
 
   return (
-    <button
-      className="theme-toggle"
-      onClick={toggle}
-      aria-label={`Switch to ${next} mode`}
-      title={`Switch to ${next} mode`}
-    >
-      {theme === 'dark' ? '☀️' : '🌙'}
-    </button>
+    <div className="theme-toggle-slider">
+      <span className="theme-icon light">🌙</span>
+      <button
+        className="slider-button"
+        onClick={toggle}
+        aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+        title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+        data-theme={theme}
+      />
+      <span className="theme-icon dark">☀️</span>
+    </div>
   );
 }
