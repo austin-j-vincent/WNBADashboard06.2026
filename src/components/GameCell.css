@@ -13,14 +13,18 @@
   box-shadow: 0 2px 10px var(--shadow);
 }
 
-/* Per-team accent: away color (left) → home color (right) */
+/* Per-team accent: away color (left) → home color (right), lightened 20% */
 .team-accent-bar {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, var(--away) 0%, var(--home) 100%);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--away) 80%, white) 0%,
+    color-mix(in srgb, var(--home) 80%, white) 100%
+  );
 }
 
 .game-time-channel {

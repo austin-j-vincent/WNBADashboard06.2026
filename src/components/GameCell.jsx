@@ -16,7 +16,11 @@ export default function GameCell({ game }) {
 
       <div className="game-time-channel">
         <span className="time">{formatTimeEDT(tipOffTime)} EDT</span>
-        <span className="channel">{broadcastChannel}</span>
+        <span className="channel">
+          {broadcastChannel && broadcastChannel !== 'TBD'
+            ? `📺 ${broadcastChannel}`
+            : broadcastChannel}
+        </span>
       </div>
 
       <div className="game-matchup">
