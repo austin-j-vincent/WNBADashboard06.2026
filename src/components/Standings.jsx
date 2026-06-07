@@ -101,17 +101,11 @@ export default function Standings() {
                   {/* Playoff cutoff line between the 8th and 9th teams */}
                   {row.rank === 8 && i < standings.length - 1 && (
                     <div className="playoff-divider">
-                      <span>Playoff line</span>
+                      <span>Playoffs</span>
                     </div>
                   )}
                 </div>
               ))}
-            </div>
-          )}
-
-          {!loading && standings.length > 0 && (
-            <div className="standings-legend">
-              <small>Top 8 teams qualify for the playoffs.</small>
             </div>
           )}
 
