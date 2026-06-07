@@ -1,14 +1,26 @@
 .game-cell {
-  background: white;
-  border-radius: 8px;
-  padding: 12px;
-  border: 1px solid #e0e0e0;
-  transition: all 0.2s;
+  position: relative;
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 14px 12px 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .game-cell:hover {
-  border-color: #9b2c42;
-  box-shadow: 0 2px 6px rgba(155, 44, 66, 0.15);
+  border-color: var(--wnba-orange);
+  box-shadow: 0 2px 10px var(--shadow);
+}
+
+/* Per-team accent: away color (left) → home color (right) */
+.team-accent-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--away) 0%, var(--home) 100%);
 }
 
 .game-time-channel {
@@ -17,19 +29,19 @@
   align-items: center;
   margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border);
 }
 
 .time {
   font-size: 13px;
-  font-weight: 600;
-  color: #9b2c42;
+  font-weight: 700;
+  color: var(--wnba-orange);
 }
 
 .channel {
   font-size: 11px;
-  color: #999;
-  background: #f5f5f5;
+  color: var(--text-muted);
+  background: var(--surface-2);
   padding: 4px 8px;
   border-radius: 4px;
   text-transform: uppercase;
@@ -43,24 +55,22 @@
   gap: 8px;
 }
 
+/* Subtle team-colored wash behind each team column (emoji color unaffected) */
 .team {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
   flex: 1;
-}
-
-.team.away-team {
   text-align: center;
-}
-
-.team.home-team {
-  text-align: center;
+  padding: 8px 4px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--team) 12%, transparent);
 }
 
 .emoji {
   font-size: 28px;
+  line-height: 1;
 }
 
 .team-info {
@@ -71,28 +81,28 @@
 }
 
 .abbreviation {
-  font-size: 14px;
-  font-weight: 700;
-  color: #222;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
   line-height: 1;
 }
 
 .record {
   font-size: 11px;
-  color: #999;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
 .vs {
   font-size: 12px;
-  color: #ccc;
-  font-weight: 600;
+  color: var(--text-muted);
+  font-weight: 700;
   margin: 0 4px;
 }
 
 @media (min-width: 480px) {
   .game-cell {
-    padding: 14px;
+    padding: 16px 14px 14px;
   }
 
   .emoji {
@@ -100,7 +110,7 @@
   }
 
   .abbreviation {
-    font-size: 16px;
+    font-size: 17px;
   }
 
   .record {

@@ -61,9 +61,24 @@ function resolveTeam(apiTeam) {
   return { acronym: rawAbbr || '???', emoji: '🏀' };
 }
 
+// Per-team colors: acronym -> { primary, secondary }. Single source of truth
+// for game-cell tints — change any team's colors with a one-line edit here.
 const TEAM_COLORS = {
-  PHX: { primary: '#9B2C42', secondary: '#E8855B' },
-  // Others fall back to the Mercury-neutral default below.
+  ATL: { primary: '#E03A3E', secondary: '#001A57' }, // Atlanta Dream
+  CHI: { primary: '#418FDE', secondary: '#FFD100' }, // Chicago Sky
+  CON: { primary: '#0A2240', secondary: '#FF6900' }, // Connecticut Sun
+  IND: { primary: '#002D62', secondary: '#E03A3E' }, // Indiana Fever
+  NYL: { primary: '#6ECEB2', secondary: '#000000' }, // New York Liberty
+  TOR: { primary: '#4D2357', secondary: '#B0CDE9' }, // Toronto Tempo
+  DAL: { primary: '#002B5C', secondary: '#C4D600' }, // Dallas Wings
+  LAS: { primary: '#552583', secondary: '#FDB927' }, // Los Angeles Sparks
+  GSV: { primary: '#5A1E96', secondary: '#000000' }, // Golden State Valkyries
+  MIN: { primary: '#236192', secondary: '#78BE21' }, // Minnesota Lynx
+  SEA: { primary: '#2C5234', secondary: '#FEE11A' }, // Seattle Storm
+  PHX: { primary: '#201747', secondary: '#E56020' }, // Phoenix Mercury
+  PDX: { primary: '#E5ACB6', secondary: '#E5E5E5' }, // Portland Fire
+  LVA: { primary: '#000000', secondary: '#C8102E' }, // Las Vegas Aces
+  WAS: { primary: '#002B5C', secondary: '#E03A3E' }, // Washington Mystics
 };
 
 const DEFAULT_COLORS = { primary: '#6b6375', secondary: '#c4ced3' };
