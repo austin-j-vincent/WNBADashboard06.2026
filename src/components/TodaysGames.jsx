@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { fetchTodaysGames, formatLastUpdated } from '../services/wnbaApi';
+import { useRefresh } from '../contexts/RefreshContext';
 import GameCell from './GameCell';
 import './TodaysGames.css';
 
@@ -9,8 +10,9 @@ export default function TodaysGames() {
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { registerModule } = useRefresh();
 
-  const loadGames = async () => {
+  const loadGames = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -23,11 +25,16 @@ export default function TodaysGames() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadGames();
-  }, []);
+  }, [loadGames]);
+
+  useEffect(() => {
+    const unregister = registerModule(loadGames);
+    return unregister;
+  }, [registerModule, loadGames]);
 
   const toggleCollapse = () => setIsCollapsed(!isCollapsed);
 

@@ -1,0 +1,41 @@
+.refresh-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Frosted glass: translucent wash + blur of everything behind it.
+     Fallback first (so the wash still shows without color-mix support),
+     then the theme-aware color-mix version where supported. */
+  background: rgba(255, 255, 255, 0.55);
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  animation: overlay-fade-in 0.2s ease;
+}
+
+.refresh-overlay-icon {
+  font-size: 64px;
+  line-height: 1;
+  filter: drop-shadow(0 4px 12px var(--shadow));
+  animation: spin-basketball 1s linear infinite;
+}
+
+@keyframes spin-basketball {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes overlay-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
