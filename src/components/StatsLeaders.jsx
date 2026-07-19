@@ -87,8 +87,8 @@ export default function StatsLeaders() {
           {/* Reserved tab bar. Only PPG is active this release; RPG/APG/SPG/BPG
               tabs get added here next — fetchStatLeaders/LEADER_STATS already
               support them, so this bar is where those siblings will live. */}
-          <div className="leaders-tabs" role="tablist" aria-label="Stat categories">
-            <span className="leaders-tab active" aria-current="true">PPG</span>
+          <div className="leaders-tabs" role="group" aria-label="Stat categories">
+            <span className="leaders-tab active">PPG</span>
           </div>
 
           {error && (
@@ -123,7 +123,9 @@ export default function StatsLeaders() {
                 ‹
               </button>
 
-              <LeaderCard leader={active} statLabel={statLabel} />
+              {/* Keyed by player so switching leaders remounts the card (and its
+                  headshot), resetting any per-player image-load state. */}
+              <LeaderCard key={active.player.athleteId} leader={active} statLabel={statLabel} />
 
               <button
                 className="carousel-arrow next"
@@ -134,14 +136,14 @@ export default function StatsLeaders() {
                 ›
               </button>
 
-              <div className="carousel-dots" role="tablist" aria-label="Choose leader">
+              <div className="carousel-dots" role="group" aria-label="Choose leader">
                 {leaders.map((row, i) => (
                   <button
                     key={row.player.athleteId}
                     className={`carousel-dot${i === activeIndex ? ' active' : ''}`}
                     onClick={() => goTo(i)}
                     aria-label={`Show #${i + 1}`}
-                    aria-current={i === activeIndex}
+                    aria-pressed={i === activeIndex}
                   />
                 ))}
               </div>
@@ -166,7 +168,7 @@ function LeaderCard({ leader, statLabel }) {
   const { rank, player, statDisplay, team } = leader;
   return (
     <div className="leader-card" style={{ '--team': team.colors.primary }}>
-      <PlayerHeadshot url={player.headshotUrl} name={player.name} />
+      <PlayerHeadshot url={player.headshotUrl} name={player.name} fallbackEmoji={team.emoji} />
 
       <div className="leader-line name-line">
         <span className="medal" aria-hidden="true">
@@ -188,9 +190,11 @@ function LeaderCard({ leader, statLabel }) {
   );
 }
 
-// Visual anchor: the player's headshot, falling back to a generic woman-bust
-// figure if the image is missing or fails to load (no network for the fallback).
-function PlayerHeadshot({ url, name }) {
+// Visual anchor: the player's headshot. When the image is missing or fails to
+// load, the player's team emoji stands in as the anchor (e.g. ♦️ for a Las Vegas
+// Aces player). The parent LeaderCard is keyed by player, so `failed` can't carry
+// over between leaders.
+function PlayerHeadshot({ url, name, fallbackEmoji }) {
   const [failed, setFailed] = useState(false);
   const showImage = url && !failed;
 
@@ -205,23 +209,14 @@ function PlayerHeadshot({ url, name }) {
           onError={() => setFailed(true)}
         />
       ) : (
-        <WomanBust />
+        <span
+          className="headshot-emoji"
+          role="img"
+          aria-label={`${name} — photo unavailable`}
+        >
+          {fallbackEmoji}
+        </span>
       )}
     </div>
-  );
-}
-
-// Generic bust-of-a-woman silhouette (inline SVG, theme-aware via currentColor).
-function WomanBust() {
-  return (
-    <svg
-      className="headshot-fallback"
-      viewBox="0 0 64 64"
-      role="img"
-      aria-label="No photo available"
-    >
-      <circle cx="32" cy="23" r="13" />
-      <path d="M8 60c0-13 10.7-21 24-21s24 8 24 21z" />
-    </svg>
   );
 }

@@ -399,9 +399,14 @@ export async function fetchStatLeaders(statKey = 'points') {
   // (read by name, never hardcoded), then normalize each athlete against it.
   const statIndex = findStatIndex(data.categories, config);
   const leaders = athletes
-    .map((entry, i) => normalizeLeader(entry, i, config, statIndex))
+    .map(entry => normalizeLeader(entry, config, statIndex))
     .filter(Boolean)
     .slice(0, 3);
+  // Assign rank AFTER filtering/slicing so a dropped athlete (missing id) can't
+  // leave a gap in the 1..3 ranks that drive the medal emojis.
+  leaders.forEach((row, i) => {
+    row.rank = i + 1;
+  });
 
   return {
     leaders,
@@ -424,7 +429,7 @@ function findStatIndex(metaCategories, config) {
 
 // Normalize one ranked athlete entry. Every value is read from the API; the stat
 // value comes from the athlete's matching category totals/values at `statIndex`.
-function normalizeLeader(entry, index, config, statIndex) {
+function normalizeLeader(entry, config, statIndex) {
   const a = entry?.athlete;
   if (!a?.id) return null;
 
@@ -433,11 +438,9 @@ function normalizeLeader(entry, index, config, statIndex) {
     : null;
   const statDisplay =
     statIndex >= 0 && cat && Array.isArray(cat.totals) ? cat.totals[statIndex] ?? null : null;
-  const statValue =
-    statIndex >= 0 && cat && Array.isArray(cat.values) ? cat.values[statIndex] ?? null : null;
 
   return {
-    rank: index + 1,
+    // rank is assigned by fetchStatLeaders after filtering/slicing.
     player: {
       name: a.displayName || [a.firstName, a.lastName].filter(Boolean).join(' ') || 'Unknown',
       // ESPN's WNBA positions are coarse (G/F/C), shown verbatim; null hides it.
@@ -446,7 +449,6 @@ function normalizeLeader(entry, index, config, statIndex) {
       headshotUrl: a.headshot?.href || null,
     },
     statDisplay,
-    statValue,
     team: buildLeaderTeam(a),
   };
 }
