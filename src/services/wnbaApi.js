@@ -145,30 +145,32 @@ async function probeEndpoints({ cacheKey, allCandidates, fillTemplate, extract, 
 
 // Canonical team registry — the single source of truth for how every team is
 // displayed. `acronym` and `emoji` follow the official 2026 naming conventions.
+// `location` + `name` give the full display name (e.g. "Las Vegas" + "Aces").
 // `aliases` lists the abbreviations the API may send (e.g. ESPN sends "NY",
 // "LA", "CONN"); `match` lets us resolve a team by name if the abbreviation is
 // unfamiliar, so a team can never display with the wrong code.
 const TEAMS = [
-  { acronym: 'ATL', emoji: '💭', aliases: ['ATL'], match: ['atlanta', 'dream'] },
-  { acronym: 'CHI', emoji: '🌃', aliases: ['CHI'], match: ['chicago', 'sky'] },
-  { acronym: 'CON', emoji: '🌞', aliases: ['CON', 'CONN'], match: ['connecticut', 'sun'] },
-  { acronym: 'IND', emoji: '🌡️', aliases: ['IND'], match: ['indiana', 'fever'] },
-  { acronym: 'NYL', emoji: '🗽', aliases: ['NYL', 'NY'], match: ['new york', 'liberty'] },
-  { acronym: 'TOR', emoji: '🎵', aliases: ['TOR'], match: ['toronto', 'tempo'] },
-  { acronym: 'DAL', emoji: '🪽', aliases: ['DAL'], match: ['dallas', 'wings'] },
-  { acronym: 'LAS', emoji: '✨', aliases: ['LAS', 'LA'], match: ['los angeles', 'sparks'] },
-  { acronym: 'GSV', emoji: '⚔️', aliases: ['GSV', 'GS', 'GV'], match: ['golden state', 'valkyries'] },
-  { acronym: 'MIN', emoji: '😼', aliases: ['MIN'], match: ['minnesota', 'lynx'] },
-  { acronym: 'SEA', emoji: '⛈️', aliases: ['SEA'], match: ['seattle', 'storm'] },
-  { acronym: 'PHX', emoji: '🪐', aliases: ['PHX', 'PHO'], match: ['phoenix', 'mercury'] },
-  { acronym: 'PDX', emoji: '🔥', aliases: ['PDX', 'POR'], match: ['portland', 'fire'] },
-  { acronym: 'LVA', emoji: '♦️', aliases: ['LVA', 'LV'], match: ['las vegas', 'aces'] },
-  { acronym: 'WAS', emoji: '🔮', aliases: ['WAS', 'WSH'], match: ['washington', 'mystics'] },
+  { acronym: 'ATL', emoji: '💭', location: 'Atlanta', name: 'Dream', aliases: ['ATL'], match: ['atlanta', 'dream'] },
+  { acronym: 'CHI', emoji: '🌃', location: 'Chicago', name: 'Sky', aliases: ['CHI'], match: ['chicago', 'sky'] },
+  { acronym: 'CON', emoji: '🌞', location: 'Connecticut', name: 'Sun', aliases: ['CON', 'CONN'], match: ['connecticut', 'sun'] },
+  { acronym: 'IND', emoji: '🌡️', location: 'Indiana', name: 'Fever', aliases: ['IND'], match: ['indiana', 'fever'] },
+  { acronym: 'NYL', emoji: '🗽', location: 'New York', name: 'Liberty', aliases: ['NYL', 'NY'], match: ['new york', 'liberty'] },
+  { acronym: 'TOR', emoji: '🎵', location: 'Toronto', name: 'Tempo', aliases: ['TOR'], match: ['toronto', 'tempo'] },
+  { acronym: 'DAL', emoji: '🪽', location: 'Dallas', name: 'Wings', aliases: ['DAL'], match: ['dallas', 'wings'] },
+  { acronym: 'LAS', emoji: '✨', location: 'Los Angeles', name: 'Sparks', aliases: ['LAS', 'LA'], match: ['los angeles', 'sparks'] },
+  { acronym: 'GSV', emoji: '⚔️', location: 'Golden State', name: 'Valkyries', aliases: ['GSV', 'GS', 'GV'], match: ['golden state', 'valkyries'] },
+  { acronym: 'MIN', emoji: '😼', location: 'Minnesota', name: 'Lynx', aliases: ['MIN'], match: ['minnesota', 'lynx'] },
+  { acronym: 'SEA', emoji: '⛈️', location: 'Seattle', name: 'Storm', aliases: ['SEA'], match: ['seattle', 'storm'] },
+  { acronym: 'PHX', emoji: '🪐', location: 'Phoenix', name: 'Mercury', aliases: ['PHX', 'PHO'], match: ['phoenix', 'mercury'] },
+  { acronym: 'PDX', emoji: '🔥', location: 'Portland', name: 'Fire', aliases: ['PDX', 'POR'], match: ['portland', 'fire'] },
+  { acronym: 'LVA', emoji: '♦️', location: 'Las Vegas', name: 'Aces', aliases: ['LVA', 'LV'], match: ['las vegas', 'aces'] },
+  { acronym: 'WAS', emoji: '🔮', location: 'Washington', name: 'Mystics', aliases: ['WAS', 'WSH'], match: ['washington', 'mystics'] },
 ];
 
-// Resolve an API team object to its canonical { acronym, emoji }.
-// Order: exact abbreviation alias -> all name keywords -> any name keyword ->
-// safe fallback (show the raw abbreviation rather than break).
+// Resolve an API team object to its canonical registry entry
+// ({ acronym, emoji, location, name, ... }). Order: exact abbreviation alias ->
+// all name keywords -> any name keyword -> safe fallback (show the raw
+// abbreviation rather than break; location/name absent on the fallback).
 function resolveTeam(apiTeam) {
   const rawAbbr = (apiTeam?.abbreviation || '').toUpperCase();
   const name = (apiTeam?.displayName || apiTeam?.shortDisplayName || apiTeam?.name || apiTeam?.location || '').toLowerCase();
@@ -343,6 +345,126 @@ function buildStandingTeam(apiTeam) {
     abbreviation: acronym,
     emoji,
     colors: TEAM_COLORS[acronym] || DEFAULT_COLORS,
+  };
+}
+
+// ===== Stat Leaders =====
+// Fetches the per-game statistical leaders (top players) for a stat. Data comes
+// from ESPN's public `statistics/byathlete` feed — a key-less GET on a second
+// host, so it consumes ZERO RapidAPI quota. The feed returns athletes already
+// ranked by the requested stat, so we read every value straight from the API and
+// simply slice the top three — nothing is computed locally.
+const ESPN_STATS_HOST = 'site.web.api.espn.com';
+
+// Each leaderboard is defined by which ESPN category/stat it reads and the label
+// we show. `sort` is the feed's sort param. Only `points` is surfaced in the UI
+// this release; the other four are ready for the upcoming tabs (RPG/APG/SPG/BPG).
+const LEADER_STATS = {
+  points: { sort: 'offensive.avgPoints', category: 'offensive', stat: 'avgPoints', label: 'PPG' },
+  rebounds: { sort: 'general.avgRebounds', category: 'general', stat: 'avgRebounds', label: 'RPG' },
+  assists: { sort: 'offensive.avgAssists', category: 'offensive', stat: 'avgAssists', label: 'APG' },
+  steals: { sort: 'defensive.avgSteals', category: 'defensive', stat: 'avgSteals', label: 'SPG' },
+  blocks: { sort: 'defensive.avgBlocks', category: 'defensive', stat: 'avgBlocks', label: 'BPG' },
+};
+
+// Fetch the top-3 leaders for a stat (defaults to points → PPG).
+export async function fetchStatLeaders(statKey = 'points') {
+  const config = LEADER_STATS[statKey];
+  if (!config) throw new Error(`Unknown stat leaderboard: ${statKey}`);
+
+  // Season year in US Eastern time (matches the standings/games season logic).
+  const { Y } = easternDateParts();
+  const url =
+    `https://${ESPN_STATS_HOST}/apis/common/v3/sports/basketball/wnba/statistics/byathlete` +
+    `?sort=${config.sort}:desc&limit=10&season=${Y}&seasontype=2`;
+
+  let response;
+  try {
+    response = await fetch(url, { method: 'GET' });
+  } catch {
+    // Network error or CORS block — surface an actionable message.
+    throw new Error('Could not reach the stats service. Check your connection and try again.');
+  }
+  if (!response.ok) {
+    throw new Error(`Could not load stat leaders. API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  const athletes = Array.isArray(data?.athletes) ? data.athletes : null;
+  if (!athletes) {
+    throw new Error('Could not load stat leaders. Unexpected response shape.');
+  }
+
+  // Resolve the stat's column index once from the response's category metadata
+  // (read by name, never hardcoded), then normalize each athlete against it.
+  const statIndex = findStatIndex(data.categories, config);
+  const leaders = athletes
+    .map(entry => normalizeLeader(entry, config, statIndex))
+    .filter(Boolean)
+    .slice(0, 3);
+  // Assign rank AFTER filtering/slicing so a dropped athlete (missing id) can't
+  // leave a gap in the 1..3 ranks that drive the medal emojis.
+  leaders.forEach((row, i) => {
+    row.rank = i + 1;
+  });
+
+  return {
+    leaders,
+    statKey,
+    statLabel: config.label,
+    fetchedAt: new Date().toISOString(),
+    source: 'ESPN',
+  };
+}
+
+// Find a stat's position within its category using the response's top-level
+// `categories` metadata (each category lists its stats in `names`). Returns -1
+// if the metadata is missing the stat.
+function findStatIndex(metaCategories, config) {
+  if (!Array.isArray(metaCategories)) return -1;
+  const cat = metaCategories.find(c => c?.name === config.category);
+  if (!cat || !Array.isArray(cat.names)) return -1;
+  return cat.names.indexOf(config.stat);
+}
+
+// Normalize one ranked athlete entry. Every value is read from the API; the stat
+// value comes from the athlete's matching category totals/values at `statIndex`.
+function normalizeLeader(entry, config, statIndex) {
+  const a = entry?.athlete;
+  if (!a?.id) return null;
+
+  const cat = Array.isArray(entry.categories)
+    ? entry.categories.find(c => c?.name === config.category)
+    : null;
+  const statDisplay =
+    statIndex >= 0 && cat && Array.isArray(cat.totals) ? cat.totals[statIndex] ?? null : null;
+
+  return {
+    // rank is assigned by fetchStatLeaders after filtering/slicing.
+    player: {
+      name: a.displayName || [a.firstName, a.lastName].filter(Boolean).join(' ') || 'Unknown',
+      // ESPN's WNBA positions are coarse (G/F/C), shown verbatim; null hides it.
+      position: a.position?.abbreviation || null,
+      athleteId: a.id,
+      headshotUrl: a.headshot?.href || null,
+    },
+    statDisplay,
+    team: buildLeaderTeam(a),
+  };
+}
+
+// Build a leader's team object (emoji + full location/name + colors) from the
+// athlete's ESPN team fields, reusing the canonical registry via resolveTeam.
+function buildLeaderTeam(athlete) {
+  const abbreviation = athlete?.teamShortName || athlete?.teams?.[0]?.abbreviation || '';
+  const espnName = athlete?.teamName || athlete?.teams?.[0]?.name || '';
+  const resolved = resolveTeam({ abbreviation, displayName: espnName });
+  return {
+    abbreviation: resolved.acronym,
+    emoji: resolved.emoji,
+    location: resolved.location || '',
+    name: resolved.name || espnName || '',
+    colors: TEAM_COLORS[resolved.acronym] || DEFAULT_COLORS,
   };
 }
 
