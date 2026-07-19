@@ -367,6 +367,16 @@ const LEADER_STATS = {
   blocks: { sort: 'defensive.avgBlocks', category: 'defensive', stat: 'avgBlocks', label: 'BPG' },
 };
 
+// Ordered tab list for the Stats Leaders switcher — the single source of truth
+// for tab order + labels. Each key maps into LEADER_STATS above.
+export const STAT_LEADER_TABS = [
+  { key: 'points', label: 'PPG' },
+  { key: 'rebounds', label: 'RPG' },
+  { key: 'assists', label: 'APG' },
+  { key: 'steals', label: 'SPG' },
+  { key: 'blocks', label: 'BPG' },
+];
+
 // Fetch the top-3 leaders for a stat (defaults to points → PPG).
 export async function fetchStatLeaders(statKey = 'points') {
   const config = LEADER_STATS[statKey];

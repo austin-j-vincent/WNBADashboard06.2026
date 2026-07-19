@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { fetchStatLeaders, formatLastUpdated } from '../services/wnbaApi';
+import { fetchStatLeaders, formatLastUpdated, STAT_LEADER_TABS } from '../services/wnbaApi';
 import { useRefresh } from '../contexts/RefreshContext';
 import './StatsLeaders.css';
 
@@ -17,14 +17,15 @@ export default function StatsLeaders() {
   const [source, setSource] = useState(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  // Which stat leaderboard is showing. Fresh loads always land on PPG.
+  const [activeStat, setActiveStat] = useState('points');
   const { registerModule } = useRefresh();
 
-  const loadLeaders = useCallback(async () => {
+  const loadLeaders = useCallback(async (statKey) => {
     setLoading(true);
     setError(null);
     try {
-      // Release 1 shows the PPG leaders. Future tabs will pass other stat keys.
-      const data = await fetchStatLeaders('points');
+      const data = await fetchStatLeaders(statKey);
       setLeaders(data.leaders);
       setStatLabel(data.statLabel);
       setLastUpdated(data.fetchedAt);
@@ -38,17 +39,30 @@ export default function StatsLeaders() {
     }
   }, []);
 
+  // Mirror the active stat into a ref so the (stable) refresh callback always
+  // reloads whichever tab is currently selected.
+  const activeStatRef = useRef(activeStat);
   useEffect(() => {
-    loadLeaders();
+    activeStatRef.current = activeStat;
+  }, [activeStat]);
+
+  useEffect(() => {
+    loadLeaders('points');
   }, [loadLeaders]);
 
-  // Join the global refresh cycle so the Refresh button reloads leaders too.
+  // Join the global refresh cycle; Refresh reloads the currently-selected tab.
   useEffect(() => {
-    const unregister = registerModule(loadLeaders);
+    const unregister = registerModule(() => loadLeaders(activeStatRef.current));
     return unregister;
   }, [registerModule, loadLeaders]);
 
   const toggleCollapse = () => setIsCollapsed(!isCollapsed);
+
+  const selectStat = (key) => {
+    if (key === activeStat) return;
+    setActiveStat(key);
+    loadLeaders(key);
+  };
 
   const goTo = (i) => setActiveIndex(Math.max(0, Math.min(leaders.length - 1, i)));
   const prev = () => goTo(activeIndex - 1);
@@ -84,17 +98,24 @@ export default function StatsLeaders() {
 
       {!isCollapsed && (
         <>
-          {/* Reserved tab bar. Only PPG is active this release; RPG/APG/SPG/BPG
-              tabs get added here next — fetchStatLeaders/LEADER_STATS already
-              support them, so this bar is where those siblings will live. */}
+          {/* Stat switcher: one tab per leaderboard (PPG/RPG/APG/SPG/BPG). */}
           <div className="leaders-tabs" role="group" aria-label="Stat categories">
-            <span className="leaders-tab active">PPG</span>
+            {STAT_LEADER_TABS.map(({ key, label }) => (
+              <button
+                key={key}
+                className={`leaders-tab${key === activeStat ? ' active' : ''}`}
+                onClick={() => selectStat(key)}
+                aria-pressed={key === activeStat}
+              >
+                {label}
+              </button>
+            ))}
           </div>
 
           {error && (
             <div className="error-state">
               <p>⚠️ {error}</p>
-              <button onClick={loadLeaders} className="retry-btn">
+              <button onClick={() => loadLeaders(activeStat)} className="retry-btn">
                 Try Again
               </button>
             </div>

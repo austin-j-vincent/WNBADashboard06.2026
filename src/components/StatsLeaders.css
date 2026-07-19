@@ -22,27 +22,40 @@
   margin-left: auto;
 }
 
-/* Reserved tab bar — holds the future PPG/RPG/APG/SPG/BPG switcher. */
+/* Stat switcher — five pills spread evenly across the width (APG lands centered). */
 .leaders-tabs {
   display: flex;
-  gap: 8px;
+  justify-content: space-between;
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
 }
 
+/* Unselected tab: transparent (module bg shows through) + orange text + a thin
+   orange outline — matching the "Today's Games" start-time treatment. */
 .leaders-tab {
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.4px;
-  padding: 5px 12px;
+  padding: 5px 11px;
   border-radius: 999px;
-  color: var(--text-muted);
-  background: var(--surface-2);
+  cursor: pointer;
+  font-family: inherit;
+  appearance: none;
+  color: var(--wnba-orange);
+  background: transparent;
+  border: 1px solid var(--wnba-orange);
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
+.leaders-tab:hover:not(.active) {
+  background: color-mix(in srgb, var(--wnba-orange) 12%, transparent);
+}
+
+/* Selected tab: solid orange with white text. */
 .leaders-tab.active {
   color: var(--on-accent);
   background: var(--wnba-orange);
+  border-color: var(--wnba-orange);
 }
 
 /* One-at-a-time carousel: [prev] [card] [next] with dots spanning below. */
