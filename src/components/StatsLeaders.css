@@ -9,6 +9,19 @@
   font-size: 14px;
 }
 
+/* Two-sided footer (scoped to this module so the shared right-aligned
+   .module-footer used elsewhere is untouched): source on the left, updated on
+   the right. margin-left:auto keeps "Updated" right even if source is absent. */
+.stats-leaders .module-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stats-leaders .module-footer .footer-updated {
+  margin-left: auto;
+}
+
 /* Reserved tab bar — holds the future PPG/RPG/APG/SPG/BPG switcher. */
 .leaders-tabs {
   display: flex;

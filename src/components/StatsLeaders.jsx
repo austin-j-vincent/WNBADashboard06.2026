@@ -14,6 +14,7 @@ export default function StatsLeaders() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [source, setSource] = useState(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const { registerModule } = useRefresh();
@@ -27,6 +28,7 @@ export default function StatsLeaders() {
       setLeaders(data.leaders);
       setStatLabel(data.statLabel);
       setLastUpdated(data.fetchedAt);
+      setSource(data.source);
       setActiveIndex(0); // always (re)start on the #1 leader
     } catch (err) {
       setError(err.message);
@@ -148,7 +150,10 @@ export default function StatsLeaders() {
 
           {lastUpdated && (
             <div className="module-footer">
-              <small>Updated {formatLastUpdated(lastUpdated)}</small>
+              {source && <small>Source: {source}</small>}
+              <small className="footer-updated">
+                Updated {formatLastUpdated(lastUpdated)}
+              </small>
             </div>
           )}
         </>
